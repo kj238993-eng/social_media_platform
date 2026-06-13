@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VibeNet - Social Platform{% endblock %}</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'core/css/style.css' %}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-compass logo-icon"></i>
+                <span class="logo-text">VibeNet</span>
+            </div>
+            
+            {% if user.is_authenticated %}
+            <nav class="nav-links">
+                <a href="{% url 'feed' %}" class="nav-link {% if request.resolver_match.url_name == 'feed' %}active{% endif %}">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Feed</span>
+                </a>
+                <a href="{% url 'profile' username=user.username %}" class="nav-link {% if request.resolver_match.url_name == 'profile' and profile_user == user %}active{% endif %}">
+                    <i class="fa-solid fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <a href="{% url 'logout' %}" class="nav-link logout-btn">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+            
+            <!-- Quick Profile Summary in Sidebar -->
+            <div class="sidebar-user">
+                <img src="{{ user.profile.profile_picture_url }}" alt="{{ user.username }}'s avatar" class="avatar-sm">
+                <div class="user-meta">
+                    <span class="display-name">@{{ user.username }}</span>
+                    <span class="user-handle">{{ user.email }}</span>
+                </div>
+            </div>
+            {% else %}
+            <nav class="nav-links">
+                <a href="{% url 'login' %}" class="nav-link {% if request.resolver_match.url_name == 'login' %}active{% endif %}">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    <span>Login</span>
+                </a>
+                <a href="{% url 'register' %}" class="nav-link {% if request.resolver_match.url_name == 'register' %}active{% endif %}">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Register</span>
+                </a>
+            </nav>
+            {% endif %}
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- JavaScript base script -->
+    <script src="{% static 'core/js/script.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

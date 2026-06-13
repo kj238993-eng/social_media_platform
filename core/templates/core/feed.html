@@ -1,0 +1,166 @@
+{% extends 'core/base.html' %}
+{% block title %}Feed - VibeNet{% endblock %}
+
+{% block content %}
+<div class="feed-layout">
+    <!-- Center Feed Column -->
+    <div class="feed-column">
+        <!-- Feed Type Tab Switcher -->
+        <div class="feed-tabs">
+            <a href="?feed=all" class="feed-tab {% if feed_type == 'all' %}active{% endif %}">
+                <i class="fa-solid fa-globe"></i> Global Feed
+            </a>
+            <a href="?feed=following" class="feed-tab {% if feed_type == 'following' %}active{% endif %}">
+                <i class="fa-solid fa-user-group"></i> Following
+            </a>
+        </div>
+
+        <!-- Create Post Card -->
+        <div class="card create-post-card">
+            <div class="create-post-header">
+                <img src="{{ user.profile.profile_picture_url }}" alt="avatar" class="avatar-md">
+                <h3>What's on your mind, {{ user.username }}?</h3>
+            </div>
+            <form action="{% url 'create_post' %}" method="POST" class="post-form">
+                {% csrf_token %}
+                <textarea name="content" placeholder="Share your vibe..." required rows="3"></textarea>
+                
+                <div class="post-image-input-wrapper" style="display: none;" id="imageInputContainer">
+                    <i class="fa-solid fa-image input-icon"></i>
+                    <input type="url" name="image_url" placeholder="Paste an image URL (optional)..." id="imageInput">
+                </div>
+
+                <div class="post-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleImageInput()">
+                        <i class="fa-regular fa-image"></i> Add Image URL
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-paper-plane"></i> Share Post
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Posts List -->
+        <div class="posts-list">
+            {% for post in posts %}
+                <article class="card post-card" data-post-id="{{ post.id }}">
+                    <!-- Post Header -->
+                    <header class="post-header">
+                        <a href="{% url 'profile' username=post.user.username %}" class="post-author-link">
+                            <img src="{{ post.user.profile.profile_picture_url }}" alt="avatar" class="avatar-md">
+                            <div class="author-meta">
+                                <span class="author-name">@{{ post.user.username }}</span>
+                                <span class="post-time">{{ post.created_at|timesince }} ago</span>
+                            </div>
+                        </a>
+                    </header>
+
+                    <!-- Post Body -->
+                    <div class="post-body">
+                        <p class="post-content">{{ post.content }}</p>
+                        {% if post.image_url %}
+                            <div class="post-image-container">
+                                <img src="{{ post.image_url }}" alt="Post attachment" class="post-attachment-img">
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Post Footer (Likes and Comments count) -->
+                    <footer class="post-footer">
+                        <button class="action-btn like-btn {% if post.id in liked_post_ids %}liked{% endif %}" onclick="likePost({{ post.id }})">
+                            <i class="{% if post.id in liked_post_ids %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
+                            <span class="like-count">{{ post.likes.count }}</span>
+                        </button>
+                        <button class="action-btn comment-toggle-btn" onclick="toggleComments({{ post.id }})">
+                            <i class="fa-regular fa-comment"></i>
+                            <span>{{ post.comments.count }}</span>
+                        </button>
+                    </footer>
+
+                    <!-- Comments Section -->
+                    <section class="comments-section" id="comments-{{ post.id }}" style="display: none;">
+                        <div class="comments-list" id="comments-list-{{ post.id }}">
+                            {% for comment in post.comments.all %}
+                                <div class="comment-item">
+                                    <img src="{{ comment.user.profile.profile_picture_url }}" alt="avatar" class="avatar-sm">
+                                    <div class="comment-content-box">
+                                        <div class="comment-header">
+                                            <a href="{% url 'profile' username=comment.user.username %}" class="comment-author">@{{ comment.user.username }}</a>
+                                            <span class="comment-time">{{ comment.created_at|date:"M d, Y, h:i A" }}</span>
+                                        </div>
+                                        <p class="comment-text">{{ comment.content }}</p>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <p class="no-comments-text" id="no-comments-{{ post.id }}">No comments yet. Be the first to share your thoughts!</p>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Add Comment Form -->
+                        <form onsubmit="submitComment(event, {{ post.id }})" class="comment-form">
+                            {% csrf_token %}
+                            <img src="{{ user.profile.profile_picture_url }}" alt="avatar" class="avatar-sm">
+                            <div class="comment-input-wrapper">
+                                <input type="text" placeholder="Write a comment..." required id="comment-input-{{ post.id }}">
+                                <button type="submit" class="send-comment-btn">
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                </article>
+            {% empty %}
+                <div class="card empty-state-card">
+                    <i class="fa-solid fa-feather-pointed empty-icon"></i>
+                    <h3>No posts to show</h3>
+                    {% if feed_type == 'following' %}
+                        <p>Follow some creators or switch to the Global Feed to see posts.</p>
+                        <a href="?feed=all" class="btn btn-primary btn-sm">Explore Global Feed</a>
+                    {% else %}
+                        <p>Be the first one to start the conversation by sharing a post above!</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Right Sidebar Column (Suggestions) -->
+    <aside class="feed-sidebar">
+        <div class="card suggestions-card">
+            <h3>Who to Follow</h3>
+            <div class="suggestions-list">
+                {% for suggestion in suggestions %}
+                    <div class="suggestion-item">
+                        <a href="{% url 'profile' username=suggestion.username %}" class="suggestion-user">
+                            <img src="{{ suggestion.profile.profile_picture_url }}" alt="avatar" class="avatar-sm">
+                            <div class="suggestion-meta">
+                                <span class="suggestion-name">@{{ suggestion.username }}</span>
+                            </div>
+                        </a>
+                        <button class="btn btn-primary btn-xs" onclick="toggleFollow(this, {{ suggestion.id }})">
+                            Follow
+                        </button>
+                    </div>
+                {% empty %}
+                    <p class="no-suggestions">No suggestions available. Everyone is followed!</p>
+                {% endfor %}
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleImageInput() {
+        const container = document.getElementById('imageInputContainer');
+        if (container.style.display === 'none') {
+            container.style.display = 'flex';
+        } else {
+            container.style.display = 'none';
+            document.getElementById('imageInput').value = '';
+        }
+    }
+</script>
+{% endblock %}

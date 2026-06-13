@@ -1,0 +1,209 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ profile_user.username }}'s Profile - VibeNet{% endblock %}
+
+{% block content %}
+<div class="profile-layout">
+    <!-- Profile Header Card -->
+    <div class="card profile-card-header">
+        <div class="profile-info-row">
+            <img src="{{ profile.profile_picture_url }}" alt="avatar" class="avatar-lg" id="profileAvatarImg">
+            
+            <div class="profile-details">
+                <div class="username-row">
+                    <h2>@{{ profile_user.username }}</h2>
+                    
+                    {% if profile_user == user %}
+                        <button class="btn btn-secondary btn-sm" onclick="toggleEditProfile()">
+                            <i class="fa-solid fa-pen-to-square"></i> Edit Profile
+                        </button>
+                    {% else %}
+                        <button class="btn {% if is_following %}btn-secondary{% else %}btn-primary{% endif %} btn-sm" 
+                                id="profileFollowBtn" 
+                                onclick="toggleFollowProfile({{ profile_user.id }})">
+                            {% if is_following %}Unfollow{% else %}Follow{% endif %}
+                        </button>
+                    {% endif %}
+                </div>
+
+                <!-- Profile Statistics -->
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <span class="stat-num">{{ posts_count }}</span>
+                        <span class="stat-label">Posts</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-num" id="followersCount">{{ followers_count }}</span>
+                        <span class="stat-label">Followers</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-num" id="followingCount">{{ following_count }}</span>
+                        <span class="stat-label">Following</span>
+                    </div>
+                </div>
+
+                <!-- User Bio -->
+                <p class="profile-bio" id="profileBioText">
+                    {% if profile.bio %}
+                        {{ profile.bio }}
+                    {% else %}
+                        <span class="no-bio-placeholder">No bio added yet.</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Edit Profile Form (Hidden by default) -->
+        {% if profile_user == user %}
+            <div class="edit-profile-section" id="editProfileSection" style="display: none;">
+                <hr class="section-divider">
+                <h3>Update Profile</h3>
+                <form action="{% url 'edit_profile' %}" method="POST" class="edit-profile-form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="bioInput">Bio</label>
+                        <textarea name="bio" id="bioInput" rows="3" placeholder="Tell the world about yourself...">{{ profile.bio }}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="avatarUrlInput">Profile Picture URL</label>
+                        <input type="url" name="profile_picture_url" id="avatarUrlInput" value="{{ profile.profile_picture_url }}" placeholder="Paste custom avatar URL...">
+                    </div>
+                    
+                    <div class="edit-form-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="toggleEditProfile()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- User's Posts Feed -->
+    <div class="user-posts-section">
+        <h3>Posts by @{{ profile_user.username }}</h3>
+        <div class="posts-list">
+            {% for post in posts %}
+                <article class="card post-card" data-post-id="{{ post.id }}">
+                    <!-- Post Header -->
+                    <header class="post-header">
+                        <div class="post-author-link">
+                            <img src="{{ post.user.profile.profile_picture_url }}" alt="avatar" class="avatar-md">
+                            <div class="author-meta">
+                                <span class="author-name">@{{ post.user.username }}</span>
+                                <span class="post-time">{{ post.created_at|timesince }} ago</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <!-- Post Body -->
+                    <div class="post-body">
+                        <p class="post-content">{{ post.content }}</p>
+                        {% if post.image_url %}
+                            <div class="post-image-container">
+                                <img src="{{ post.image_url }}" alt="Post attachment" class="post-attachment-img">
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Post Footer -->
+                    <footer class="post-footer">
+                        <button class="action-btn like-btn {% if post.id in liked_post_ids %}liked{% endif %}" onclick="likePost({{ post.id }})">
+                            <i class="{% if post.id in liked_post_ids %}fa-solid{% else %}fa-regular{% endif %} fa-heart"></i>
+                            <span class="like-count">{{ post.likes.count }}</span>
+                        </button>
+                        <button class="action-btn comment-toggle-btn" onclick="toggleComments({{ post.id }})">
+                            <i class="fa-regular fa-comment"></i>
+                            <span>{{ post.comments.count }}</span>
+                        </button>
+                    </footer>
+
+                    <!-- Comments Section -->
+                    <section class="comments-section" id="comments-{{ post.id }}" style="display: none;">
+                        <div class="comments-list" id="comments-list-{{ post.id }}">
+                            {% for comment in post.comments.all %}
+                                <div class="comment-item">
+                                    <img src="{{ comment.user.profile.profile_picture_url }}" alt="avatar" class="avatar-sm">
+                                    <div class="comment-content-box">
+                                        <div class="comment-header">
+                                            <span class="comment-author">@{{ comment.user.username }}</span>
+                                            <span class="comment-time">{{ comment.created_at|date:"M d, Y, h:i A" }}</span>
+                                        </div>
+                                        <p class="comment-text">{{ comment.content }}</p>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <p class="no-comments-text" id="no-comments-{{ post.id }}">No comments yet. Be the first to share your thoughts!</p>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Add Comment Form -->
+                        <form onsubmit="submitComment(event, {{ post.id }})" class="comment-form">
+                            {% csrf_token %}
+                            <img src="{{ user.profile.profile_picture_url }}" alt="avatar" class="avatar-sm">
+                            <div class="comment-input-wrapper">
+                                <input type="text" placeholder="Write a comment..." required id="comment-input-{{ post.id }}">
+                                <button type="submit" class="send-comment-btn">
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                </article>
+            {% empty %}
+                <div class="card empty-state-card">
+                    <i class="fa-regular fa-folder-open empty-icon"></i>
+                    <h3>No posts yet</h3>
+                    <p>@{{ profile_user.username }} has not published any posts.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleEditProfile() {
+        const formSection = document.getElementById('editProfileSection');
+        if (formSection.style.display === 'none') {
+            formSection.style.display = 'block';
+            formSection.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            formSection.style.display = 'none';
+        }
+    }
+
+    function toggleFollowProfile(userId) {
+        const followBtn = document.getElementById('profileFollowBtn');
+        const followersCountSpan = document.getElementById('followersCount');
+        
+        const csrfToken = getCsrfToken();
+        
+        fetch(`/user/${userId}/follow/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            if (data.following) {
+                followBtn.textContent = 'Unfollow';
+                followBtn.classList.remove('btn-primary');
+                followBtn.classList.add('btn-secondary');
+            } else {
+                followBtn.textContent = 'Follow';
+                followBtn.classList.remove('btn-secondary');
+                followBtn.classList.add('btn-primary');
+            }
+            followersCountSpan.textContent = data.followers_count;
+        })
+        .catch(err => console.error("Follow error:", err));
+    }
+</script>
+{% endblock %}

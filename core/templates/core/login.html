@@ -1,0 +1,45 @@
+{% extends 'core/base.html' %}
+{% block title %}Login - VibeNet{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <i class="fa-solid fa-compass auth-logo"></i>
+            <h2>Welcome Back</h2>
+            <p class="subtitle">Log in to see what your friends are up to.</p>
+        </div>
+        
+        <form method="POST" class="auth-form">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="error-msg alert-error">
+                    {% for error in form.non_field_errors %}
+                        <p><i class="fa-solid fa-triangle-exclamation"></i> {{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    <div class="input-wrapper">
+                        {{ field }}
+                    </div>
+                    {% if field.errors %}
+                        <div class="error-msg">
+                            {% for error in field.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary btn-block">Log In</button>
+        </form>
+        
+        <p class="auth-redirect">Don't have an account? <a href="{% url 'register' %}">Register here</a></p>
+    </div>
+</div>
+{% endblock %}
